@@ -1,0 +1,14 @@
+{
+  "name": "tiktok-profile-extractor-scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scrape": "node ./scrape_profile.mjs",
+    "self-test": "node ./scrape_profile.mjs --self-test"
+  },
+  "dependencies": {
+    "playwright": "^1.53.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

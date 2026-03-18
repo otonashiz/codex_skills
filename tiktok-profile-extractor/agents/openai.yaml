@@ -1,0 +1,4 @@
+interface:
+  display_name: "TikTok Profile Extractor"
+  short_description: "Extract public TikTok video metadata to Markdown"
+  default_prompt: "Use $tiktok-profile-extractor to extract all publicly visible video metadata from this TikTok creator profile URL and write tiktok.{creator_id}.md in the current workspace."

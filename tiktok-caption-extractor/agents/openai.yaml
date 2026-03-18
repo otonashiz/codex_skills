@@ -1,0 +1,4 @@
+interface:
+  display_name: "TikTok Caption Extractor"
+  short_description: "Extract TikTok video transcripts"
+  default_prompt: "Use $tiktok-caption-extractor to turn a TikTok video link into a Markdown report using browser-extracted platform captions."
