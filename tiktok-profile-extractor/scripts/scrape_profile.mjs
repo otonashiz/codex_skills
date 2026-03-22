@@ -523,6 +523,172 @@ function unwrapVideoEntity(value) {
   return candidates.find((candidate) => looksLikeVideoEntity(candidate)) || null;
 }
 
+function normalizeCreatorHandle(value) {
+  return cleanText(value).replace(/^@/, "");
+}
+
+function extractProfileBio(value) {
+  return compactWhitespace(
+    pickFirstNonEmpty(
+      value?.signature,
+      value?.bioDescription,
+      value?.bio_description,
+      value?.bio,
+      value?.user?.signature,
+      value?.user?.bioDescription,
+      value?.user?.bio_description,
+      value?.user?.bio,
+      value?.profile?.signature,
+      value?.profile?.bioDescription,
+      value?.profile?.bio,
+    ),
+  );
+}
+
+function extractProfileFollowers(value) {
+  return normalizeNumberString(
+    pickFirstNonEmpty(
+      value?.stats?.followerCount,
+      value?.stats?.follower_count,
+      value?.stats?.followers,
+      value?.stats?.follower,
+      value?.stats?.fans,
+      value?.stats?.fansCount,
+      value?.statistics?.followerCount,
+      value?.statistics?.follower_count,
+      value?.statistics?.followers,
+      value?.statistics?.fans,
+      value?.statsV2?.followerCount,
+      value?.statsV2?.follower_count,
+      value?.statsV2?.followers,
+      value?.statsV2?.fans,
+      value?.userInfo?.stats?.followerCount,
+      value?.userInfo?.stats?.follower_count,
+      value?.userInfo?.stats?.followers,
+      value?.userInfo?.stats?.fans,
+      value?.userStats?.followerCount,
+      value?.userStats?.follower_count,
+      value?.userStats?.followers,
+      value?.userStats?.fans,
+      value?.followerCount,
+      value?.follower_count,
+      value?.followers,
+      value?.follower,
+      value?.fans,
+      value?.fansCount,
+    ),
+  );
+}
+
+function buildProfileMetaCandidate(value, fallbackCreatorId = "") {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const creatorId = normalizeCreatorHandle(
+    pickFirstNonEmpty(
+      value?.uniqueId,
+      value?.unique_id,
+      value?.user?.uniqueId,
+      value?.user?.unique_id,
+      value?.profile?.uniqueId,
+      value?.profile?.unique_id,
+      value?.author?.uniqueId,
+      value?.author?.unique_id,
+      value?.creator?.uniqueId,
+      value?.creator?.unique_id,
+      value?.userInfo?.user?.uniqueId,
+      value?.userInfo?.user?.unique_id,
+      fallbackCreatorId,
+    ),
+  );
+  const bio = extractProfileBio(value);
+  const followers = extractProfileFollowers(value);
+
+  if (!bio && !followers) {
+    return null;
+  }
+
+  return {
+    creatorId,
+    bio,
+    followers,
+  };
+}
+
+function scoreProfileMetaCandidate(candidate, targetCreatorId) {
+  if (!candidate) {
+    return -1;
+  }
+
+  let score = 0;
+  const normalizedTarget = normalizeCreatorHandle(targetCreatorId);
+  if (candidate.creatorId) {
+    if (candidate.creatorId === normalizedTarget) {
+      score += 50;
+    } else {
+      score -= 20;
+    }
+  }
+  if (candidate.bio) {
+    score += 10;
+  }
+  if (candidate.followers) {
+    score += 10;
+  }
+
+  return score;
+}
+
+function mergeProfileMeta(...metas) {
+  const merged = {
+    bio: "",
+    followers: "",
+  };
+
+  for (const meta of metas) {
+    if (!meta) {
+      continue;
+    }
+
+    merged.bio ||= compactWhitespace(meta.bio || "");
+    merged.followers ||= normalizeNumberString(meta.followers || "");
+  }
+
+  return merged;
+}
+
+function extractProfileMetaFromRoots(roots, targetCreatorId) {
+  let bestBio = { score: -1, value: "" };
+  let bestFollowers = { score: -1, value: "" };
+
+  for (const root of roots) {
+    if (!root || typeof root !== "object") {
+      continue;
+    }
+
+    deepWalk(root, (value) => {
+      const candidate = buildProfileMetaCandidate(value);
+      if (!candidate) {
+        return;
+      }
+
+      const score = scoreProfileMetaCandidate(candidate, targetCreatorId);
+      if (candidate.bio && score > bestBio.score) {
+        bestBio = { score, value: candidate.bio };
+      }
+      if (candidate.followers && score > bestFollowers.score) {
+        bestFollowers = { score, value: candidate.followers };
+      }
+    });
+  }
+
+  return {
+    bio: bestBio.value,
+    followers: bestFollowers.value,
+  };
+}
+
 function buildRecordFromVideoEntity(entity, fallbackCreatorId, videoUrlHint = "") {
   const author = entity.author || entity.authorInfo || entity.creator || {};
   const stats = entity.stats || entity.statistics || entity.statsV2 || {};
@@ -743,6 +909,8 @@ function renderMarkdownReport(report) {
   lines.push("");
   lines.push(`- Source profile URL: ${escapeMarkdownCell(report.profileUrl)}`);
   lines.push(`- Creator ID: ${escapeMarkdownCell(report.creatorId)}`);
+  lines.push(`- Bio: ${escapeMarkdownCell(report.bio)}`);
+  lines.push(`- Followers: ${escapeMarkdownCell(report.followers)}`);
   lines.push(`- Scraped at: ${escapeMarkdownCell(report.scrapedAt)}`);
   lines.push(`- Status: ${escapeMarkdownCell(report.status)}`);
   lines.push(`- Video count: ${report.records.length}`);
@@ -873,6 +1041,31 @@ async function detectBlocker(page) {
 
 async function snapshotProfilePage(page, creatorId, payloads = []) {
   const snapshot = await page.evaluate((fallbackCreatorId) => {
+    const pickText = (...selectors) => {
+      for (const selector of selectors) {
+        const text = document.querySelector(selector)?.textContent?.trim();
+        if (text) {
+          return text;
+        }
+      }
+      return "";
+    };
+    const pickDataE2EText = (...patterns) => {
+      const nodes = Array.from(document.querySelectorAll("[data-e2e]"));
+      for (const node of nodes) {
+        const key = (node.getAttribute("data-e2e") || "").toLowerCase();
+        if (!key) {
+          continue;
+        }
+        if (patterns.some((pattern) => key.includes(pattern))) {
+          const text = node.textContent?.trim();
+          if (text) {
+            return text;
+          }
+        }
+      }
+      return "";
+    };
     const anchors = Array.from(document.querySelectorAll('a[href*="/video/"]'));
     const links = anchors
       .map((anchor) => {
@@ -897,6 +1090,14 @@ async function snapshotProfilePage(page, creatorId, payloads = []) {
       links,
       scrollHeight: document.body?.scrollHeight || 0,
       bodyText: (document.body?.innerText || "").slice(0, 4000),
+      profileMeta: {
+        bio:
+          pickText('[data-e2e="user-bio"]', '[data-e2e="user-signature"]') ||
+          pickDataE2EText("bio", "signature"),
+        followers:
+          pickText('[data-e2e="followers-count"]') ||
+          pickDataE2EText("followers"),
+      },
       scriptJson: {
         __UNIVERSAL_DATA_FOR_REHYDRATION__:
           document.getElementById("__UNIVERSAL_DATA_FOR_REHYDRATION__")?.textContent || "",
@@ -911,8 +1112,9 @@ async function snapshotProfilePage(page, creatorId, payloads = []) {
   );
   const structuredRoots = buildStructuredRoots(
     { scriptJson: snapshot.scriptJson, ldJson: [] },
-    [],
+    payloads,
   );
+  const structuredProfileMeta = extractProfileMetaFromRoots(structuredRoots, creatorId);
   const structuredRecords = [
     ...extractRecordsFromPayloads(payloads, creatorId),
     ...extractRecordsFromRoots(structuredRoots, creatorId),
@@ -935,6 +1137,7 @@ async function snapshotProfilePage(page, creatorId, payloads = []) {
     links: [...structuredMatches, ...domMatches, ...scriptMatches],
     scrollHeight: snapshot.scrollHeight,
     bodyText: compactWhitespace(snapshot.bodyText),
+    profileMeta: mergeProfileMeta(structuredProfileMeta, snapshot.profileMeta),
   };
 }
 
@@ -1272,6 +1475,8 @@ async function runSelfTests() {
   const markdown = renderMarkdownReport({
     profileUrl: "https://www.tiktok.com/@tech.panda.pro",
     creatorId: "tech.panda.pro",
+    bio: "EV and AI commentary.",
+    followers: "1400000",
     scrapedAt: "2026-03-09T00:00:00.000Z",
     status: "SUCCESS",
     problems: [],
@@ -1310,6 +1515,7 @@ async function run() {
   let records = [];
   const problems = [];
   let status = "SUCCESS";
+  let profileMeta = { bio: "", followers: "" };
 
   try {
     context = await launchBrowserContext(userDataDir, args);
@@ -1329,6 +1535,7 @@ async function run() {
       creatorId,
       profileCollector.profilePayloads,
     );
+    profileMeta = mergeProfileMeta(profileMeta, warmup.snapshot.profileMeta);
     if (warmup.blocker && warmup.snapshot.links.length === 0) {
       status = "BLOCKED";
       problems.push(warmup.blocker);
@@ -1345,6 +1552,15 @@ async function run() {
 
       if (profileScan.stopReason) {
         problems.push(profileScan.stopReason);
+      }
+
+      if (!profileMeta.bio || !profileMeta.followers) {
+        const finalSnapshot = await snapshotProfilePage(
+          profilePage,
+          creatorId,
+          profileCollector.profilePayloads,
+        ).catch(() => null);
+        profileMeta = mergeProfileMeta(profileMeta, finalSnapshot?.profileMeta);
       }
 
       if (profileScan.candidates.length === 0) {
@@ -1386,6 +1602,8 @@ async function run() {
     const report = {
       profileUrl,
       creatorId,
+      bio: profileMeta.bio,
+      followers: profileMeta.followers,
       scrapedAt: new Date().toISOString(),
       status,
       problems,

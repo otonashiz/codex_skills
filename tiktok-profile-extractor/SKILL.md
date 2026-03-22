@@ -62,6 +62,8 @@ Use `--help` on the script for the latest usage text.
 - Report header fields:
   - Source profile URL
   - Creator ID
+  - Bio
+  - Followers
   - Scraped at
   - Status
   - Video count
