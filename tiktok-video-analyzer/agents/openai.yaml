@@ -1,0 +1,4 @@
+interface:
+  display_name: "TikTok Video Analyzer"
+  short_description: "Analyze TikTok captions and comments"
+  default_prompt: "Use $tiktok-video-analyzer to turn a TikTok video link into a Markdown report with platform captions, hot comments, audience questions, and conversion insights."
