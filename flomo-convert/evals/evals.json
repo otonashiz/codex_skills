@@ -1,0 +1,45 @@
+{
+  "skill_name": "flomo-convert",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我转换一下 flomo 笔记",
+      "expected_output": "找到 HTML 文件，提取时间范围，生成对应的 Markdown 文件，显示笔记条数",
+      "files": [],
+      "assertions": [
+        {
+          "text": "生成了 .md 文件",
+          "check": "输出目录中存在 .md 文件"
+        },
+        {
+          "text": "文件包含笔记内容",
+          "check": "文件大小 > 1KB 且包含 '## 笔记' 标记"
+        },
+        {
+          "text": "保留了时间信息",
+          "check": "文件中包含 '**时间:**' 标记"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/flomo-convert",
+      "expected_output": "直接执行转换流程，输出转换结果摘要",
+      "files": [],
+      "assertions": [
+        {
+          "text": "生成了 .md 文件",
+          "check": "输出目录中存在 .md 文件"
+        },
+        {
+          "text": "文件包含笔记内容",
+          "check": "文件大小 > 1KB 且包含 '## 笔记' 标记"
+        },
+        {
+          "text": "保留了时间信息",
+          "check": "文件中包含 '**时间:**' 标记"
+        }
+      ]
+    }
+  ]
+}
