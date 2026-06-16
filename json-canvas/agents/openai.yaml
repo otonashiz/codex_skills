@@ -1,0 +1,4 @@
+interface:
+  display_name: "JSON Canvas"
+  short_description: "Create and edit Obsidian .canvas whiteboards"
+  default_prompt: "Use $json-canvas to create or update an Obsidian .canvas file with a clear layout, valid node and edge references, and clean JSON formatting."

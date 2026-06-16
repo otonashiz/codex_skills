@@ -1,11 +1,11 @@
 ---
 name: tiktok-caption-extractor
-description: Extract TikTok video metadata and platform-provided caption/transcript tracks from one public TikTok video URL into a Markdown report. Use when Codex receives a TikTok video link and needs to produce the same Markdown layout as the legacy TikTok analyzer, but with browser-based Playwright extraction instead of Whisper. If the video has no platform transcript/caption track, fail clearly instead of inventing text.
+description: Extract TikTok video metadata and platform-provided caption/transcript tracks from one public TikTok video URL into a Markdown report. Use when Codex receives a TikTok video link and needs to produce the same Markdown layout as the legacy TikTok analyzer, but with browser-based Playwright extraction instead of Whisper. If the transcript is neither English nor Chinese, append a complete English translation after the original transcript. If the video has no platform transcript/caption track, fail clearly instead of inventing text.
 ---
 
 # TikTok 视频分析器
 
-Use the bundled Playwright runner to open one TikTok video detail page in a local headed browser, extract publicly visible video metadata plus any platform subtitle track, and write a Markdown report into the current working directory.
+Use the bundled Playwright runner to open one TikTok video detail page in a local headed browser, extract publicly visible video metadata plus any platform subtitle track, and write a Markdown report into the current working directory. Preserve the original-language transcript as the main transcript. If the transcript is neither English nor Chinese, append a complete, idiomatic English translation after the original transcript.
 
 ## Preconditions
 
@@ -65,6 +65,22 @@ Use `--help` on the wrapper for the latest usage text.
 6. Extract platform subtitle track URLs or direct subtitle payloads from structured data and captured responses.
 7. If no platform subtitle is available, fail with `该视频没有可提取的平台字幕`.
 8. Write the Markdown report into the current working directory.
+9. Check the generated `## 口播文案（语音转录）` text and the runner's printed subtitle language. If the source transcript is not English and not Chinese, append an English translation section to the same Markdown file.
+
+## Translation Rule
+
+- Always keep the original extracted transcript under `## 口播文案（语音转录）`; do not replace it with a translation.
+- If the transcript is English or Chinese, do not add a translation section.
+- If the transcript is French, Spanish, Portuguese, German, Italian, Arabic, Japanese, Korean, Russian, Thai, Vietnamese, Indonesian, or any other non-English/non-Chinese language, append this section after the original transcript:
+
+```markdown
+## English Translation
+<accurate, idiomatic, complete English translation of the full transcript>
+```
+
+- Translate the full transcript faithfully, including repeated lines, rhetorical questions, names, place names, and domain-specific terms. Keep paragraph breaks if they make the spoken content easier to read.
+- Use the subtitle track language printed by the runner when it is specific, but verify against the actual transcript text. Treat `und` as unknown and decide from the text itself.
+- If TikTok exposes both an original-language subtitle track and an English translated track, prefer the original-language transcript for `## 口播文案（语音转录）`, then append the English translation separately.
 
 ## Output Contract
 
@@ -76,6 +92,8 @@ Use `--help` on the wrapper for the latest usage text.
   - `## 视频描述`
   - `## Hashtags`
   - `## 口播文案（语音转录）`
+- Optional translation section:
+  - `## English Translation` only when the transcript is neither English nor Chinese.
 
 ## Failure Handling
 

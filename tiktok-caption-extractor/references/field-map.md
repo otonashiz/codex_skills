@@ -34,8 +34,12 @@ Normalize each track to:
 - extension or format hint
 - optional direct response body if already captured
 
+Preserve the original-language caption whenever TikTok exposes multiple tracks. English translated captions can be useful for checking meaning, but the report's main transcript should remain the original extracted speech text.
+
 Parse subtitle content in this order:
 
 1. WebVTT
 2. SRT
 3. JSON segment payloads with text fields
+
+After parsing, if the final transcript is neither English nor Chinese, append a `## English Translation` section to the generated Markdown report with a complete, natural English translation.

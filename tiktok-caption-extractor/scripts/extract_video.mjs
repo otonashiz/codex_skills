@@ -1309,6 +1309,7 @@ async function run() {
     }
 
     console.log("📝 正在提取平台字幕...");
+    console.log(`   字幕轨道: ${track.language || "und"} / ${track.source || "unknown"}`);
     const transcript = await extractTranscript(context, track);
     console.log(`   字幕提取完成，共 ${transcript.length} 字`);
 

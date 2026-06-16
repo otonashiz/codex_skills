@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sourcing Inquiry Breakdown"
+  short_description: "Break down sourcing inquiries into next steps"
+  default_prompt: "Use $sourcing-inquiry-breakdown to analyze this customer sourcing inquiry and draft a client-ready reply."
