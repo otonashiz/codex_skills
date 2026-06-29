@@ -10,7 +10,7 @@ import { chromium } from "playwright-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const DEFAULT_MAX_ITEMS = 200;
+const DEFAULT_MAX_ITEMS = 400;
 const DEFAULT_TIMEOUT_MS = 30000;
 const DEFAULT_SLOW_MO_MS = 250;
 const PROFILE_INITIAL_SETTLE_MS = 7000;
