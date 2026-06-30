@@ -17,7 +17,7 @@ const PROFILE_INITIAL_SETTLE_MS = 7000;
 const PROFILE_POLL_INTERVAL_MS = 3000;
 const PROFILE_INITIAL_POLL_ATTEMPTS = 12;
 const PROFILE_STABLE_PASSES_REQUIRED = 2;
-const SCROLL_PAUSE_MS = 4500;
+const SCROLL_PAUSE_MS = 1800;
 const STAGNANT_SCROLL_LIMIT = 10;
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36";
@@ -501,12 +501,19 @@ function looksLikeVideoEntity(value) {
   }
 
   const id = value.id || value.awemeId || value.aweme_id || value.itemId;
-  const hasStats = value.stats || value.statistics || value.statsV2;
+  const stats = value.stats || value.statistics || value.statsV2;
   const hasAuthor = value.author || value.authorInfo || value.creator || value.authorInfoMap;
   const hasText =
     value.desc || value.description || value.title || value.textExtra || value.challenges;
+  const playCount = pickFirstNonEmpty(
+    stats?.playCount,
+    stats?.play_count,
+    stats?.play,
+    stats?.viewCount,
+    stats?.views,
+  );
 
-  return Boolean(id) && Boolean(hasStats || hasAuthor || hasText);
+  return /^\d{15,22}$/.test(cleanText(id)) && Boolean(playCount) && Boolean(hasAuthor || hasText);
 }
 
 function unwrapVideoEntity(value) {
@@ -831,7 +838,10 @@ function extractRecordsFromRoots(roots, fallbackCreatorId) {
 
       const record = buildRecordFromVideoEntity(entity, fallbackCreatorId);
       const key = record.videoId || record.videoUrl;
-      if (!key) {
+      if (
+        !key ||
+        normalizeCreatorHandle(record.creatorId) !== normalizeCreatorHandle(fallbackCreatorId)
+      ) {
         return;
       }
 
@@ -1337,9 +1347,9 @@ async function collectProfileCandidates(page, creatorId, maxItems, payloads = []
 
     lastHeight = Math.max(lastHeight, snapshot.scrollHeight);
     await page.evaluate(() => {
-      window.scrollBy(0, Math.max(window.innerHeight * 0.9, 700));
+      window.scrollBy(0, Math.max(window.innerHeight * 2.2, 1600));
     });
-    await humanWait(page, SCROLL_PAUSE_MS, 1800);
+    await humanWait(page, SCROLL_PAUSE_MS, 1000);
   }
 
   return {
@@ -1352,6 +1362,7 @@ async function collectProfileCandidates(page, creatorId, maxItems, payloads = []
 function buildJsonCollector() {
   const payloads = [];
   const profilePayloads = [];
+  const debugResponses = process.env.TIKTOK_PROFILE_DEBUG === "1";
 
   const onResponse = async (response) => {
     try {
@@ -1368,6 +1379,17 @@ function buildJsonCollector() {
         return;
       }
       const parsed = JSON.parse(text);
+      if (debugResponses) {
+        const parsedUrl = new URL(url);
+        const directItems = Array.isArray(parsed?.itemList)
+          ? parsed.itemList.length
+          : Array.isArray(parsed?.data?.itemList)
+            ? parsed.data.itemList.length
+            : 0;
+        console.error(
+          `[json-response] ${parsedUrl.pathname} keys=${Object.keys(parsed || {}).slice(0, 12).join(",")} itemList=${directItems}`,
+        );
+      }
       if (isProfileItemList) {
         profilePayloads.push(parsed);
         if (profilePayloads.length > 50) {
@@ -1462,6 +1484,14 @@ async function runSelfTests() {
     },
     textExtra: [{ hashtagName: "tesla" }, { hashtagName: "elonmusk" }],
   };
+  assert.equal(looksLikeVideoEntity(mockItem), true);
+  assert.equal(
+    looksLikeVideoEntity({
+      id: "7554241187679325471",
+      title: "original sound",
+    }),
+    false,
+  );
   const record = buildRecordFromVideoEntity(
     mockItem,
     "tech.panda.pro",
@@ -1596,6 +1626,9 @@ async function run() {
         }
       }
     }
+  } catch (error) {
+    status = records.length > 0 ? "PARTIAL" : "BLOCKED";
+    problems.push(`Browser run failed: ${cleanText(error?.message || error)}`);
   } finally {
     records = backfillCreatorFields(records, creatorId);
 
