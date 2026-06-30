@@ -4,4 +4,6 @@
 **/.eslintcache
 **/__pycache__/
 *.pyc
+.runtime/
+.youtube-channel-exporter-cache/
 .env

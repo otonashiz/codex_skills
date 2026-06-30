@@ -1,0 +1,4 @@
+interface:
+  display_name: "YouTube Channel Exporter"
+  short_description: "Export YouTube channel videos to Markdown"
+  default_prompt: "Use $youtube-channel-exporter to export a YouTube channel's public videos and Shorts to a Markdown table and plain URL list."
