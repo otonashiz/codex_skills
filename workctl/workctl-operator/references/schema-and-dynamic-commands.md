@@ -155,8 +155,14 @@ workctl time resolve --profile data-advisor --preset last-7d --format json
 
 分页采集：
 
+先将参数保存为 `collect-params.json`：
+
+```json
+{"pageSize": 50}
+```
+
 ```bash
-workctl collect <product.group.action> --params '{"pageSize":50}' --max-pages 10 --max-items 500 --format json
+workctl collect <product.group.action> --params-file collect-params.json --max-pages 10 --max-items 500 --format json
 ```
 
 多只读命令 fan-out：

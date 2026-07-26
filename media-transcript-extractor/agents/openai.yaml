@@ -1,0 +1,4 @@
+interface:
+  display_name: "Media Transcript Extractor"
+  short_description: "Local audio and video transcription"
+  default_prompt: "Use $media-transcript-extractor to transcribe this local media file into a full timestamped transcript."

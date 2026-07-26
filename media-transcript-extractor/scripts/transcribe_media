@@ -1,0 +1,7 @@
+#!/bin/zsh
+set -eu
+
+script_dir=${0:A:h}
+export MEDIA_TRANSCRIPT_INVOCATION_DIR="$PWD"
+cd /tmp
+exec "$script_dir/transcribe_media.py" "$@"

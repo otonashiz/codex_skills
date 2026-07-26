@@ -131,11 +131,24 @@ GET /registry/detail?domainName=communication
 
 CLI 会把 camelCase 参数直接注册为 flag，例如 `--selfAliId`，并为 camelCase 自动注册 kebab-case alias。
 
-List/Array/Object 类型的参数用 JSON 字符串传入：
+List/Array/Object 类型的参数优先通过文件传入，避免 Windows shell 改写 JSON。
+例如先准备 `receivers.json`：
+
+```json
+[123, 456]
+```
+
+以及 `filter.json`：
+
+```json
+{"status": "active"}
+```
+
+再执行：
 
 ```bash
-workctl im message send --receiverAliID '[123,456]' --format json
-workctl product query search --filter '{"status":"active"}' --format json
+workctl im message send --receiverAliID @receivers.json --format json
+workctl product query search --filter @filter.json --format json
 ```
 
 ## toolResponse 约定

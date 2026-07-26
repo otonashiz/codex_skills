@@ -10,6 +10,13 @@
 4. 卡片、文件、语义化消息需要按 schema 参数开启对应描述字段。
 5. 输出会话摘要、异常点、买家状态和后续动作。
 
+### 会话消息游标 SOP
+
+- `workctl icbu tm list-conversation-msg` 首次以默认 `forward=false` 向历史查询时可以省略 `--limit-time-stamp`；CLI 自动注入执行时的当前 Unix 毫秒时间戳。
+- 返回 `hasMore=true` 后，下一页必须显式传上一页返回的 cursor/`nextTimeStamp`，不要再次省略游标，否则会重新读取第一页。
+- `forward=true` 用于从既有时间点向新增方向读取，必须显式传 `--limit-time-stamp`；CLI 不猜增量起点。
+- 不要用 `--time last-7d` 代替首次消息游标；通用时间 preset 会映射窗口起点，不等价于当前时间。
+
 ## 客服诊断顺序
 
 1. 店铺维度看整体服务表现和行业对比。
@@ -24,6 +31,13 @@
 2. 根据买家 query 检索知识库。
 3. 生成回复建议；需要发送消息时展示接收人、内容、domain、附件并确认。
 4. 超过 30 天流失买家只在工具允许时调用对应挽回回复能力。
+
+### 沉寂时长输入 SOP
+
+- 单个买家使用 `workctl workflow chat-analysis calc-silence --timestamp-ms <毫秒时间戳>`。
+- 多个买家统一使用 `calc-silence --stdin`，从 stdin 传入“买家名称到毫秒时间戳”的 JSON 对象；不要创建临时 `silence_input.json`。
+- `calc-silence` 不接受 `--input-file`。`--timestamp-ms` 与 `--stdin` 两种模式互斥。
+- `--output` 会自动创建父目录，调用方不需要预创建 seller_reply 输出目录。
 
 ## 知识问答和深度研究
 
